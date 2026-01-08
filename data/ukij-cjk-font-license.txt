@@ -1,0 +1,3 @@
+Author: Tursun Sultan
+License: https://www.gnu.org/licenses/gpl-3.0.html
+Foundry: Uyghur Computer Science Association
