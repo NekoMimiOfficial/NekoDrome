@@ -84,11 +84,11 @@ int main (int argc, char* argv[])
         SceCtrlData ctrl;
         if (sceCtrlPeekBufferPositive(0, &ctrl, 1) > 0 && now- pressTime > 150 && !state.animating)
         {
-            bool used= false;
+            bool pressed= false;
             if (state.view == SETTINGS)
             {
-                if (ctrl.buttons & SCE_CTRL_DOWN) { state.menuIdx= (state.menuIdx+ 1)% 5; used= true; }
-                if (ctrl.buttons & SCE_CTRL_UP) { state.menuIdx= (state.menuIdx+ 4)% 5; used= true; }
+                if (ctrl.buttons & SCE_CTRL_DOWN) { state.menuIdx= (state.menuIdx+ 1)% 5; pressed= true; }
+                if (ctrl.buttons & SCE_CTRL_UP) { state.menuIdx= (state.menuIdx+ 4)% 5; pressed= true; }
                 if (ctrl.buttons & SCE_CTRL_CROSS)
                 {
                     if (state.menuIdx == 0) { config.host= prompt(ren, f, "Server IP"); }
@@ -96,20 +96,20 @@ int main (int argc, char* argv[])
                     if (state.menuIdx == 2) { config.user= prompt(ren, f, "Username"); }
                     if (state.menuIdx == 3) { config.pass= prompt(ren, f, "Password"); }
                     if (state.menuIdx == 4 && !config.host.empty()) { commitSettings(); sync(HOME, 0); }
-                    used= true;
+                    pressed= true;
                 }
             }else
             {
-                if (ctrl.buttons & SCE_CTRL_DOWN) { state.index++; used= true; }
-                if (ctrl.buttons & SCE_CTRL_UP) { state.index--; used= true; }
-                if (ctrl.buttons & SCE_CTRL_RIGHT && state.view == HOME) { sync(HOME, ++state.page); used= true; }
-                if (ctrl.buttons & SCE_CTRL_LEFT && state.view == HOME && state.page > 0) { sync(HOME, --state.page); used= true; }
-                if (ctrl.buttons & SCE_CTRL_RTRIGGER) { AppView n= (state.view == HOME) ? STARRED : (state.view == STARRED) ? OFFLINE : HOME; sync(n, 0); used= true; }
-                if (ctrl.buttons & SCE_CTRL_LTRIGGER) { AppView n= (state.view == HOME) ? OFFLINE : (state.view == OFFLINE) ? STARRED : HOME; sync(n, 0); used= true; }
-                if (ctrl.buttons & SCE_CTRL_SQUARE && !state.items.empty()) { saveLocal(state.items[state.index]); used= true; }
-                if (ctrl.buttons & SCE_CTRL_SELECT && state.active) { switchView(PLAYER); used= true; }
-                if (ctrl.buttons & SCE_CTRL_START) { switchView(SETTINGS); used= true; }
-                if (ctrl.buttons & SCE_CTRL_TRIANGLE) { std::string q= prompt(ren, f, "Search"); if (!q.empty()) { syncTracks("", true, q); } used= true; }
+                if (ctrl.buttons & SCE_CTRL_DOWN) { state.index++; pressed= true; }
+                if (ctrl.buttons & SCE_CTRL_UP) { state.index--; pressed= true; }
+                if (ctrl.buttons & SCE_CTRL_RIGHT && state.view == HOME) { sync(HOME, ++state.page); pressed= true; }
+                if (ctrl.buttons & SCE_CTRL_LEFT && state.view == HOME && state.page > 0) { sync(HOME, --state.page); pressed= true; }
+                if (ctrl.buttons & SCE_CTRL_RTRIGGER) { AppView n= (state.view == HOME) ? STARRED : (state.view == STARRED) ? OFFLINE : HOME; sync(n, 0); pressed= true; }
+                if (ctrl.buttons & SCE_CTRL_LTRIGGER) { AppView n= (state.view == HOME) ? OFFLINE : (state.view == OFFLINE) ? STARRED : HOME; sync(n, 0); pressed= true; }
+                if (ctrl.buttons & SCE_CTRL_SQUARE && !state.items.empty()) { saveLocal(state.items[state.index]); pressed= true; }
+                if (ctrl.buttons & SCE_CTRL_SELECT && state.active) { switchView(PLAYER); pressed= true; }
+                if (ctrl.buttons & SCE_CTRL_START) { switchView(SETTINGS); pressed= true; }
+                if (ctrl.buttons & SCE_CTRL_TRIANGLE) { std::string q= prompt(ren, f, "Search"); if (!q.empty()) { syncTracks("", true, q); } pressed= true; }
                 if (ctrl.buttons & SCE_CTRL_CROSS)
                 {
                     if (state.view == PLAYER) { if (state.active) { Mix_PauseMusic(); }else { Mix_ResumeMusic(); } state.active= !state.active; }
@@ -118,11 +118,11 @@ int main (int argc, char* argv[])
                         if (state.view == HOME) { syncTracks(state.items[state.index].id); }
                         else { state.queue.clear(); for (auto &it : state.items) { state.queue.push_back(it); } state.queuePos= state.index; beginTrack(ren); }
                     }
-                    used= true;
+                    pressed= true;
                 }
-                if (ctrl.buttons & SCE_CTRL_CIRCLE) { if (state.view != HOME) { sync(HOME, state.page); } used= true; }
+                if (ctrl.buttons & SCE_CTRL_CIRCLE) { if (state.view != HOME) { sync(HOME, state.page); } pressed= true; }
             }
-            if (used) { pressTime= now; }
+            if (pressed) { pressTime= now; }
         }
 
         if (now- frameTime >= 16)
