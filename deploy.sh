@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-VITA_IP="192.168.4.3"
+VITA_IP="192.168.1.3"
 TITLE_ID="NEMIKO001"
 
 rm -rf eboot.bin

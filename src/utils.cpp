@@ -3,6 +3,7 @@
 
 #include <psp2/rtc.h>
 #include <psp2/io/stat.h>
+#include <curl/curl.h>
 #include <sstream>
 #include <iomanip>
 #include <jansson.h>
@@ -43,33 +44,66 @@ void flushItems ()
     state.items.clear();
 }
 
-void commitSettings ()
-{
-    sceIoMkdir("ux0:data/nekodrome", 0777);
-    sceIoMkdir(ASSET_DIR.c_str(), 0777);
-    json_t *j= json_object();
-    json_object_set_new(j, "ip", json_string(config.host.c_str()));
-    json_object_set_new(j, "port", json_string(config.port.c_str()));
-    json_object_set_new(j, "user", json_string(config.user.c_str()));
-    json_object_set_new(j, "pass", json_string(config.pass.c_str()));
-    json_dump_file(j, CONFIG_FILE.c_str(), 0);
-    json_decref(j);
-    config.query= "u=" + config.user + "&p=" + config.pass + "&v=1.16.1&c=NekoDrome&f=json";
+std::string escape(CURL* c, const std::string& value) {
+    char* output = curl_easy_escape(c, value.c_str(), (int) value.length());
+    if (output) {
+        std::string result(output);
+        curl_free(output);
+        return result;
+    }
+    return "";
 }
 
-bool pullSettings ()
+bool commitSettings ()
 {
-    json_error_t err;
-    json_t *j= json_load_file(CONFIG_FILE.c_str(), 0, &err);
-    if (!j)
+    CURL* c= curl_easy_init ();
+    if (!c)
     { return false; }
-    config.host= json_string_value(json_object_get(j, "ip"));
-    const char* p= json_string_value(json_object_get(j, "port"));
+
+    sceIoMkdir ("ux0:data/nekodrome", 0777);
+    sceIoMkdir (ASSET_DIR.c_str(), 0777);
+    json_t *j= json_object ();
+    json_object_set_new (j, "ip", json_string(config.host.c_str()));
+    json_object_set_new (j, "port", json_string(config.port.c_str()));
+    json_object_set_new (j, "user", json_string(config.user.c_str()));
+    json_object_set_new (j, "pass", json_string(config.pass.c_str()));
+    json_dump_file (j, CONFIG_FILE.c_str(), 0);
+    json_decref (j);
+
+    std::string encUser = escape(c, config.user);
+    std::string encPass = escape(c, config.pass);
+
+    config.query= "u="+ encUser+"&p=" +encPass +"&v=1.16.1&c=NekoDrome&f=json";
+    curl_easy_cleanup (c);
+    return true;
+}
+
+bool pullSettings() {
+    CURL* c= curl_easy_init ();
+    if (!c)
+    { return false; }
+
+    json_error_t err;
+    json_t *j= json_load_file (CONFIG_FILE.c_str(), 0, &err);
+    if (!j)
+    {
+        curl_easy_cleanup (c);
+        return false;
+    }
+
+    config.host= json_string_value (json_object_get(j, "ip"));
+    const char* p= json_string_value (json_object_get(j, "port"));
     config.port= p ? p : "4533";
-    config.user= json_string_value(json_object_get(j, "user"));
-    config.pass= json_string_value(json_object_get(j, "pass"));
-    config.query= "u=" + config.user + "&p=" + config.pass + "&v=1.16.1&c=NekoDrome&f=json";
-    json_decref(j);
+    config.user= json_string_value (json_object_get(j, "user"));
+    config.pass= json_string_value (json_object_get(j, "pass"));
+
+    std::string encUser = escape(c, config.user);
+    std::string encPass = escape(c, config.pass);
+
+    config.query= "u="+ encUser+"&p=" +encPass +"&v=1.16.1&c=NekoDrome&f=json";
+
+    json_decref (j);
+    curl_easy_cleanup (c);
     return true;
 }
 
