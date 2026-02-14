@@ -5,8 +5,8 @@
 #include <string>
 
 const short BUILD_VER_MAJ= 1;
-const short BUILD_VER_MIN= 01;
-const long BUILD_ID= 1025;
+const short BUILD_VER_MIN= 02;
+const long BUILD_ID= 1026;
 
 const int SCREEN_W= 960;
 const int SCREEN_H= 544;
