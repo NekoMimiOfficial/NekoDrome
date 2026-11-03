@@ -10,9 +10,9 @@ mkdir -p "$out"
 
 cmake -S "$root" -B "$build_vita" -DCMAKE_TOOLCHAIN_FILE="$VITASDK/share/vita.toolchain.cmake"
 cmake -S "$root" -B "$build_desktop" -DCMAKE_BUILD_TYPE=Release
-cmake --build "$build_vita" -j"${nproc}"
-cmake --build "$build_desktop" -j"${nproc}"
-cmake --build "$build_desktop" --target dist -j"${nproc}"
+cmake --build "$build_vita" -j"$(nproc)"
+cmake --build "$build_desktop" -j"$(nproc)"
+cmake --build "$build_desktop" --target dist -j"$(nproc)"
 
 cp "$build_vita"/*.vpk "$out/"
 cp "$build_desktop"/dist/*.tar.gz "$out/"
