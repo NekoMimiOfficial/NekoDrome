@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=NekoDrome
+Comment=Navidrome client
+Exec=nekodrome
+Icon=nekodrome
+Terminal=false
+Categories=AudioVideo;Audio;Player;

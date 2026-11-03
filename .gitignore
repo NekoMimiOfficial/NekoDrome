@@ -1,11 +1,1 @@
-.kateproject.build
-.cache
-.cmake
-CMakeFiles
-refrences
-cmake_install.cmake
-CMakeCache.txt
-compile_commands.json
-eboot.bin
-Makefile
-nekodrome*
+build-*

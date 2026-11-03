@@ -1,82 +1,35 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.16)
+project(NekoDrome LANGUAGES C CXX)
 
-if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-  if(DEFINED ENV{VITASDK})
-    set(CMAKE_TOOLCHAIN_FILE "$ENV{VITASDK}/share/vita.toolchain.cmake" CACHE PATH "toolchain file")
-  else()
-    message(FATAL_ERROR "Please define VITASDK to point to your SDK path!")
-  endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
 endif()
 
-project(nekodrome)
-include("${VITASDK}/share/vita.cmake" REQUIRED)
+if(NOT NEKO_PLATFORM)
+  if(VITA)
+    set(NEKO_PLATFORM Vita)
+  else()
+    set(NEKO_PLATFORM Desktop)
+  endif()
+endif()
+set(NEKO_PLATFORM "${NEKO_PLATFORM}" CACHE STRING "Platform layer: the name of a file in src/platform and cmake/platform")
 
-find_package(SDL2 REQUIRED)
+set(NEKO_PLATFORM_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/${NEKO_PLATFORM}.cpp")
+set(NEKO_PLATFORM_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/platform/${NEKO_PLATFORM}.cmake")
+if(NOT EXISTS "${NEKO_PLATFORM_SOURCE}" OR NOT EXISTS "${NEKO_PLATFORM_CMAKE}")
+  message(FATAL_ERROR "Unknown NEKO_PLATFORM '${NEKO_PLATFORM}': expected ${NEKO_PLATFORM_SOURCE} and ${NEKO_PLATFORM_CMAKE}")
+endif()
+message(STATUS "NekoDrome platform: ${NEKO_PLATFORM}")
 
-set(VITA_APP_NAME "NekoDrome")
-set(VITA_TITLEID  "NEMIKO001")
-set(VITA_VERSION  "01.01")
+set(NEKOUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/NekoUI" CACHE PATH "Path to NekoUI")
+set(NEKOUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+add_subdirectory(${NEKOUI_DIR} NekoUI)
 
-set(VITA_MKSFOEX_FLAGS "${VITA_MKSFOEX_FLAGS} -d PARENTAL_LEVEL=1")
+add_executable(nekodrome src/main.cpp ${NEKO_PLATFORM_SOURCE})
+target_include_directories(nekodrome PRIVATE src)
+target_link_libraries(nekodrome PRIVATE NekoUI::NekoUI)
+target_compile_options(nekodrome PRIVATE -Wall -Wextra)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
-
-include_directories(
-  ../common
-)
-
-add_executable(${PROJECT_NAME}
-  ./src/main.cpp
-)
-
-target_link_libraries(${PROJECT_NAME}
-  SDL2_mixer
-  SDL2_image
-  SDL2_ttf
-  SDL2
-  curl
-  jansson
-  modplug
-  opusfile
-  mpg123
-  xmp
-  ssl
-  crypto
-  jpeg
-  vorbisfile
-  vorbis
-  ogg
-  opus
-  freetype
-  webpdemux
-  webp
-  png
-  bz2
-  SceAudio_stub
-  SceDisplay_stub
-  SceCtrl_stub
-  ScePower_stub
-  SceNet_stub
-  SceNetCtl_stub
-  SceIme_stub
-  SceCommonDialog_stub
-  SceSysmodule_stub
-  SceHttp_stub
-  SceSsl_stub
-  pthread
-  ${SDL2_LIBRARIES}
-  z
-)
-
-vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME})
-vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
-  VERSION ${VITA_VERSION}
-  NAME ${VITA_APP_NAME}
-  FILE sce_sys/icon0.png sce_sys/icon0.png
-  FILE sce_sys/livearea/contents/bg.png sce_sys/livearea/contents/bg.png
-  FILE sce_sys/livearea/contents/startup.png sce_sys/livearea/contents/startup.png
-  FILE sce_sys/livearea/contents/template.xml sce_sys/livearea/contents/template.xml
-  FILE data/font.ttf data/font.ttf
-)
+include("${NEKO_PLATFORM_CMAKE}")
