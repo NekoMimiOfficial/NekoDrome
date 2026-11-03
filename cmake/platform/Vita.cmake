@@ -37,5 +37,5 @@ vita_create_vpk(nekodrome.vpk ${NEKO_VITA_TITLE_ID} nekodrome.self
   NAME NekoDrome
   ${NEKO_VITA_SCE_ARGS}
   FILE ${CMAKE_SOURCE_DIR}/assets/logo.png assets/logo.png
-  FILE ${NEKOUI_DIR}/assets/fonts/Roboto-Regular.ttf font/Roboto-Regular.ttf
+  FILE ${NEKOUI_DIR}/assets/fonts/font.ttf font/font.ttf
   FILE ${NEKOUI_DIR}/assets/fonts/MaterialIcons-Regular.ttf font/MaterialIcons-Regular.ttf)
