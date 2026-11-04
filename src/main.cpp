@@ -37,26 +37,12 @@ bool fontLoads(const std::string& path) {
 
 class NekoDrome {
  public:
-  int run(int argc, char** argv) {
-    for (int i = 1; i < argc; ++i)
-      if (!std::strcmp(argv[i], "--tour") && i + 1 < argc) tourDir_ = argv[++i];
-      else if (!std::strcmp(argv[i], "--smoke") && i + 1 < argc) {
-        tourDir_ = argv[++i];
-        smoke_ = true;
-      } else if (!std::strcmp(argv[i], "--offline-tour") && i + 1 < argc) {
-        tourDir_ = argv[++i];
-        offlineTour_ = true;
-      }
+  int run() {
+
     Services& s = svc();
     s.store.load();
     s.net.insecure = s.store.cfg.insecure;
     s.net.start(platform::uiProfile().apiThreads, platform::uiProfile().transferThreads);
-
-    if (!tourDir_.empty()) {
-      SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
-      SDL_setenv("SDL_AUDIODRIVER", "dummy", 1);
-      SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
-    }
 
     platform::WindowConfig wc = platform::windowConfig();
     neko::Settings es;
@@ -70,7 +56,7 @@ class NekoDrome {
     es.glyphFontPath = platform::glyphFontPath();
     es.colorMode = s.store.cfg.dark ? neko::ColorMode::Dark : neko::ColorMode::Light;
     es.classes = appStyles();
-    es.vsync = tourDir_.empty();
+    es.vsync = vsync_.empty();
     es.imageBudgetBytes = wc.imageBudgetBytes;
     es.imageMaxDim = wc.imageMaxDim;
     if (!ui_.init(es)) {
@@ -119,7 +105,6 @@ class NekoDrome {
     ui_.onEvent([this](const SDL_Event& e) { onEvent(e); });
     ui_.onUpdate([this](float dt) { update(dt); });
 
-    if (!tourDir_.empty()) smoke_ ? buildSmoke() : (offlineTour_ ? buildOfflineTour() : buildTour());
     begin();
     ui_.run();
 
@@ -145,15 +130,11 @@ class NekoDrome {
   bool serverUp_ = false, inApp_ = false;
   float pingTimer_ = 0;
   int finished_ = 0;
-  std::string tourDir_;
-  bool offlineTour_ = false, smoke_ = false;
+  std::string vsync_;
   struct Step {
     int wait;
     std::function<void()> fn;
   };
-  std::deque<Step> tour_;
-  std::vector<Song> tourSongs_;
-  std::string tourAlbum_;
 
   void hookNav() {
     Nav& n = nav();
@@ -358,7 +339,6 @@ class NekoDrome {
       pingTimer_ = 0;
       ping(false);
     }
-    runTour();
   }
 
   void pushKey(SDL_Keycode k) {
@@ -377,94 +357,6 @@ class NekoDrome {
     std::snprintf(e.text.text, sizeof e.text.text, "%s", t.c_str());
     SDL_PushEvent(&e);
   }
-
-  void shot(const std::string& name) {
-    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, 1280, 720, 32, SDL_PIXELFORMAT_ARGB8888);
-    SDL_RenderReadPixels(ui_.renderer().sdl(), nullptr, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
-    SDL_SaveBMP(surf, (tourDir_ + "/" + name + ".bmp").c_str());
-    SDL_FreeSurface(surf);
-  }
-
-  void runTour() {
-    if (tour_.empty()) return;
-    Step& st = tour_.front();
-    if (st.wait > 0) {
-      --st.wait;
-      return;
-    }
-    auto fn = std::move(st.fn);
-    tour_.pop_front();
-    if (fn) fn();
-  }
-
-  void buildSmoke() {
-    tour_.push_back({400, [this]() { shot("s1-home"); }});
-    tour_.push_back({5, [this]() { ui_.quit(); }});
-  }
-
-  void buildOfflineTour() {
-    auto add = [this](int wait, std::function<void()> fn) { tour_.push_back({wait, std::move(fn)}); };
-    add(120, [this]() { shot("o1-offline-start"); });
-    add(1, [this]() {
-      std::vector<Song> songs;
-      for (const auto& e : svc().store.offline()) songs.push_back(e.song);
-      if (!songs.empty()) svc().player->setQueue(songs, 0, true);
-    });
-    add(60, [this]() { go(SecNowPlaying); });
-    add(60, [this]() { shot("o2-offline-playing"); });
-    add(1000, [this]() { shot("o3-offline-later"); go(SecHome); });
-    add(60, [this]() { shot("o4-home-offline"); go(SecAlbums); });
-    add(60, [this]() { shot("o5-albums-offline"); go(SecSettings); });
-    add(60, [this]() { shot("o6-settings-offline"); });
-    add(5, [this]() { ui_.quit(); });
-  }
-
-  void buildTour() {
-    auto add = [this](int wait, std::function<void()> fn) { tour_.push_back({wait, std::move(fn)}); };
-    Services& s = svc();
-    add(60, [this]() { shot("01-login"); });
-    add(1, [this]() { pushKey(SDLK_RETURN); });
-    add(3, [this]() { pushText("127.0.0.1:4533"); });
-    add(3, [this]() { pushKey(SDLK_RETURN); });
-    add(3, [this]() { pushText("neko"); });
-    add(3, [this]() { pushKey(SDLK_RETURN); });
-    add(3, [this]() { pushText("nekopass"); });
-    add(3, [this]() { shot("02-login-filled"); });
-    add(3, [this]() { pushKey(SDLK_RETURN); });
-    add(140, [this]() { shot("03-home"); });
-    add(1, [&s, this]() {
-      s.api.albumList("newest", 1, 0, [this](bool ok, std::vector<Album> a, const std::string&) {
-        if (ok && !a.empty()) {
-          tourAlbum_ = a[0].id;
-          svc().api.album(tourAlbum_, [this](bool ok2, Album, std::vector<Song> songs, const std::string&) {
-            if (ok2) tourSongs_ = songs;
-          });
-        }
-      });
-    });
-    add(60, [this]() { go(SecAlbums); });
-    add(100, [this]() { shot("04-albums"); go(SecArtists); });
-    add(80, [this]() { shot("05-artists"); if (nav().openAlbum) nav().openAlbum(tourAlbum_); });
-    add(100, [this]() { shot("06-album"); });
-    add(1, [this]() {
-      svc().player->setQueue(tourSongs_, 0, true);
-      svc().downloads.enqueueAll(tourSongs_);
-    });
-    add(30, [this]() { go(SecOffline); });
-    add(40, [this]() { shot("07-offline-downloading"); });
-    add(300, [this]() { shot("07b-offline-downloading"); });
-    add(900, [this]() { shot("08-offline-done"); go(SecNowPlaying); });
-    add(40, [this]() { shot("09-nowplaying"); ui_.shell().openDrawer(); });
-    add(90, [this]() { shot("10-queue"); ui_.shell().closeDrawer(); go(SecSearch); });
-    add(30, [this]() { pushText("neon"); });
-    add(100, [this]() { shot("11-search"); go(SecFavorites); });
-    add(80, [this]() { shot("12-favorites"); go(SecSettings); });
-    add(60, [this]() { shot("13-settings"); go(SecPlaylists); });
-    add(60, [this]() { shot("14-playlists"); go(SecHome); });
-    add(60, [this]() { shot("15-home-playing"); ui_.toggleColorMode(); });
-    add(60, [this]() { shot("16-home-light"); });
-    add(10, [this]() { ui_.quit(); });
-  }
 };
 
 }
@@ -474,7 +366,7 @@ int main(int argc, char** argv) {
   int rc;
   {
     NekoDrome app;
-    rc = app.run(argc, argv);
+    rc = app.run();
   }
   platform::shutdown();
   return rc;

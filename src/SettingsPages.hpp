@@ -35,7 +35,7 @@ class SettingsPage : public Page {
       chip->checked_ = i == cfg.palette;
       pal->add(chip);
     }
-    appearance->add(row("Accent color", "Swaps the palette live", pal));
+    appearance->add(row("Accent color", "Swaps the color palette", pal));
     col->add(appearance);
 
     auto playback = Box::make(Direction::Column)->cls("card")->fillWidth();
